@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="az"><head><meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<title>ARİZAN</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;height:100%;background:#1a1a2e!important;overflow:hidden;font-family:system-ui,-apple-system,sans-serif;color:#fff}
+#app-container{width:100vw;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:space-evenly;padding:10px 8px;max-width:340px;margin:0 auto}
+#title-banner{font-size:1.6rem;font-weight:800;text-align:center;letter-spacing:.15em;text-transform:uppercase}
+#countdown{display:flex;align-items:flex-end;justify-content:center;gap:2px;width:100%}
+.seg-wrap{display:flex;flex-direction:column;align-items:center;gap:2px}
+.seg-label{font-size:.65rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase}
+#countdown span.seg{font-size:2.3rem;font-weight:200;letter-spacing:.02em;font-variant-numeric:tabular-nums;cursor:pointer;padding:2px 4px;border-radius:8px;transition:color .2s,background .2s}
+#countdown span.seg.active{color:#4a90e2;background:rgba(74,144,226,.15)}
+.seg-wrap:has(.seg.active) .seg-label{color:#4a90e2}
+#countdown span.sep{font-size:1.8rem;color:rgba(255,255,255,.3);padding:0 1px 4px}
+#countdown.finished .seg{color:#ff4757!important;animation:blink .7s ease-in-out infinite}
+@keyframes blink{50%{opacity:.2}}
+.numpad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;width:210px}
+.numpad button{height:46px;border-radius:12px;font-size:1.25rem;background:rgba(255,255,255,.08);color:#fff;border:1px solid rgba(255,255,255,.12);cursor:pointer;display:flex;align-items:center;justify-content:center}
+.numpad button:active{transform:scale(.92);background:rgba(255,255,255,.22)}
+.numpad .btn-del{background:rgba(255,100,100,.14);border-color:rgba(255,100,100,.25);font-size:1.2rem}
+.numpad .btn-empty{cursor:default}
+.controls{display:flex;justify-content:center;align-items:center;width:100%}
+#btn-main{width:66px;height:66px;border-radius:50%;border:none;font-size:1.7rem;background:linear-gradient(145deg,#4a90e2,#7c4dff);color:#fff;box-shadow:0 4px 18px rgba(74,144,226,.45);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s,background .3s}
+#btn-main:active{transform:scale(.92)}
+#btn-main.alarm-active{width:170px;height:56px;border-radius:28px;background:linear-gradient(145deg,#ff4757,#ff6b81);box-shadow:0 6px 24px rgba(255,71,87,.55);font-size:1.15rem;font-weight:700;letter-spacing:.1em;animation:pulse-alarm 1s infinite}
+@keyframes pulse-alarm{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
+#msg{font-size:.75rem;color:rgba(255,255,255,.4);letter-spacing:.05em;min-height:1.2em;text-align:center}
+</style></head><body>
+<div id="app-container">
+<div id="title-banner">ARİZAN</div>
+<div id="countdown">
+<div class="seg-wrap"><span class="seg-label">Saat</span><span class="seg active" id="seg-h">00</span></div><span class="sep">:</span>
+<div class="seg-wrap"><span class="seg-label">Dəqiqə</span><span class="seg" id="seg-m">00</span></div><span class="sep">:</span>
+<div class="seg-wrap"><span class="seg-label">Saniyə</span><span class="seg" id="seg-s">00</span></div>
+</div>
+<div class="numpad" id="numpad">
+<button data-n="1">1</button><button data-n="2">2</button><button data-n="3">3</button>
+<button data-n="4">4</button><button data-n="5">5</button><button data-n="6">6</button>
+<button data-n="7">7</button><button data-n="8">8</button><button data-n="9">9</button>
+<button class="btn-del" id="btn-del">⌫</button><button data-n="0">0</button><button class="btn-empty"></button>
+</div>
+<div class="controls"><button id="btn-main" title="Başlat">▶</button></div>
+<div id="msg">Mavi hissəni seç, rəqəm daxil et</div>
+</div>
+<script>
+const cdEl=document.getElementById('countdown'),msgEl=document.getElementById('msg'),btnMain=document.getElementById('btn-main'),numpad=document.getElementById('numpad');
+const segs=[{el:document.getElementById('seg-h'),max:23},{el:document.getElementById('seg-m'),max:59},{el:document.getElementById('seg-s'),max:59}];
+let values=[0,0,0],active=0,buffer='',remaining=0,total=0,running=false,timer=null,alarmCtx=null,alarmInt=null,targetEndTime=0;
+
+/* ===== YENİ: sistem səviyyəsində alarm (tətbiq yatsa belə çalır) ===== */
+const LN=(window.Capacitor&&Capacitor.Plugins&&Capacitor.Plugins.LocalNotifications)||null;
+const NID=1;
+async function prepNative(){
+  if(!LN)return;
+  try{
+    const p=await LN.requestPermissions();
+    if(p.display!=='granted')msgEl.textContent='⚠️ Bildiriş icazəsini ver';
+    await LN.createChannel({id:'arizan_alarm',name:'Taymer siqnalı',importance:5,sound:'alarm.wav',vibration:true,visibility:1});
+    const ex=await LN.checkExactNotificationSetting();
+    if(ex.exact_alarm!=='granted')await LN.changeExactNotificationSetting();
+  }catch(e){}
+}
+async function scheduleNative(endMs){
+  if(!LN)return;
+  try{
+    await LN.cancel({notifications:[{id:NID}]});
+    await LN.schedule({notifications:[{id:NID,title:'ARİZAN',body:'🔔 Vaxt bitdi!',channelId:'arizan_alarm',schedule:{at:new Date(endMs),allowWhileIdle:true}}]});
+  }catch(e){}
+}
+function cancelNative(clearShown){
+  if(!LN)return;
+  LN.cancel({notifications:[{id:NID}]}).catch(()=>{});
+  if(clearShown)LN.removeAllDeliveredNotifications().catch(()=>{});
+}
+prepNative();
+/* ================================================================== */
+
+function pad(n){return String(n).padStart(2,'0')}
+function fmt(s){return [pad(Math.floor(s/3600)),pad(Math.floor(s%3600/60)),pad(s%60)]}
+function renderSegs(){segs.forEach((s,i)=>s.el.textContent=pad(values[i]))}
+function selectSeg(i){segs[active].el.classList.remove('active');active=i;segs[active].el.classList.add('active');buffer=''}
+segs.forEach((s,i)=>s.el.addEventListener('click',()=>{if(!running)selectSeg(i)}));
+
+numpad.addEventListener('click',e=>{
+  if(running)return;
+  const btn=e.target.closest('button');
+  if(!btn||btn.classList.contains('btn-empty'))return;
+  if(btn.id==='btn-del'){buffer=buffer.slice(0,-1);values[active]=parseInt(buffer)||0;renderSegs();return}
+  const digit=btn.dataset.n;if(digit===undefined)return;
+  if(buffer.length>=2)buffer=buffer.slice(1);
+  buffer+=digit;
+  const num=parseInt(buffer);
+  values[active]=Math.min(num,segs[active].max);
+  if(num>segs[active].max)buffer=String(values[active]);
+  renderSegs();
+});
+
+btnMain.addEventListener('click',()=>{
+  if(cdEl.classList.contains('finished')){stopAndReset();return}
+  if(!running){
+    if(remaining===0){
+      total=values[0]*3600+values[1]*60+values[2];remaining=total;
+      if(remaining===0){msgEl.textContent='⚠️ Vaxt daxil et';return}
+    }
+    running=true;
+    targetEndTime=Date.now()+remaining*1000;
+    localStorage.setItem('arizan_timer_end',targetEndTime);
+    localStorage.setItem('arizan_timer_running','true');
+    scheduleNative(targetEndTime);
+    timer=setInterval(tick,1000);
+    btnMain.textContent='⏸';msgEl.textContent='Davam edir...';
+    numpad.style.opacity='.25';numpad.style.pointerEvents='none';
+    segs.forEach(s=>{s.el.classList.remove('active');s.el.style.cursor='default'});
+  }else{
+    clearInterval(timer);running=false;targetEndTime=0;
+    cancelNative(false);
+    localStorage.removeItem('arizan_timer_end');
+    localStorage.setItem('arizan_timer_running','false');
+    btnMain.textContent='▶';msgEl.textContent='Dayandırıldı';
+    numpad.style.opacity='1';numpad.style.pointerEvents='';
+    segs.forEach(s=>s.el.style.cursor='pointer');
+    segs[active].el.classList.add('active');
+  }
+});
+
+function tick(){
+  if(targetEndTime>0){remaining=Math.max(0,Math.round((targetEndTime-Date.now())/1000))}else{remaining--}
+  if(remaining<=0){finish();return}
+  const p=fmt(remaining);segs.forEach((s,i)=>s.el.textContent=p[i]);
+}
+
+function finish(){
+  clearInterval(timer);running=false;targetEndTime=0;remaining=0;
+  localStorage.removeItem('arizan_timer_end');localStorage.removeItem('arizan_timer_running');
+  cancelNative(true);
+  const p=fmt(0);segs.forEach((s,i)=>s.el.textContent=p[i]);
+  cdEl.classList.add('finished');msgEl.textContent='🔔 VAXT BİTDİ!';
+  btnMain.textContent='SÖNDÜR';btnMain.classList.add('alarm-active');
+  startAlarm();
+}
+
+function stopAndReset(){
+  stopAlarm();clearInterval(timer);targetEndTime=0;
+  cancelNative(true);
+  localStorage.removeItem('arizan_timer_end');localStorage.removeItem('arizan_timer_running');
+  running=false;remaining=0;total=0;values=[0,0,0];buffer='';
+  cdEl.classList.remove('finished');
+  btnMain.textContent='▶';btnMain.classList.remove('alarm-active');
+  msgEl.textContent='Mavi hissəni seç, rəqəm daxil et';
+  numpad.style.opacity='1';numpad.style.pointerEvents='';
+  segs.forEach(s=>{s.el.style.cursor='pointer';s.el.classList.remove('active')});
+  renderSegs();selectSeg(0);
+}
+
+function beep(ctx){
+  const o=ctx.createOscillator(),g=ctx.createGain();
+  o.connect(g);g.connect(ctx.destination);o.type='sine';o.frequency.value=880;
+  g.gain.setValueAtTime(.7,ctx.currentTime);g.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+.4);
+  o.start(ctx.currentTime);o.stop(ctx.currentTime+.4);
+}
+function startAlarm(){
+  try{
+    alarmCtx=new(window.AudioContext||window.webkitAudioContext)();
+    if(alarmCtx.resume)alarmCtx.resume();
+    beep(alarmCtx);
+    alarmInt=setInterval(()=>{if(alarmCtx){if(alarmCtx.state==='suspended')alarmCtx.resume();beep(alarmCtx)}},800);
+  }catch(e){}
+  if(navigator.vibrate)navigator.vibrate([500,200,500,200,500,200,500]);
+}
+function stopAlarm(){
+  clearInterval(alarmInt);alarmInt=null;
+  if(alarmCtx){alarmCtx.close();alarmCtx=null}
+}
+
+function restore(){
+  const savedEnd=parseInt(localStorage.getItem('arizan_timer_end')||'0',10);
+  if(localStorage.getItem('arizan_timer_running')!=='true'||savedEnd<=0)return;
+  if(savedEnd>Date.now()){
+    remaining=Math.round((savedEnd-Date.now())/1000);targetEndTime=savedEnd;running=true;
+    timer=setInterval(tick,1000);
+    btnMain.textContent='⏸';msgEl.textContent='Davam edir...';
+    numpad.style.opacity='.25';numpad.style.pointerEvents='none';
+    segs.forEach(s=>{s.el.classList.remove('active');s.el.style.cursor='default'});
+    const p=fmt(remaining);segs.forEach((s,i)=>s.el.textContent=p[i]);
+  }else{finish()}
+}
+restore();
+/* tətbiqə qayıdanda dərhal yoxla */
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&running)tick()});
+</script></body></html>
