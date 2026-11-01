@@ -41,15 +41,3 @@ jobs:
         with:
           name: ARIZAN-Taymer-APK
           path: android/app/build/outputs/apk/debug/app-debug.apk
-{
-  "name": "arizan",
-  "version": "1.0.0",
-  "displayName": "ARİZAN",
-  "description": "Donmayan Etibarlı Taymer",
-  "main": "index.html",
-  "scripts": {
-    "build": "echo 'Hazirdir'"
-  },
-  "dependencies": {},
-  "devDependencies": {}
-}
