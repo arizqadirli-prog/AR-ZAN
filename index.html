@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>ARİZAN</title>
+  <style>
+    * {
+      margin: 0; padding: 0;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      background: #1a1a2e !important;
+      overflow: hidden;
+      font-family: system-ui, -apple-system, sans-serif;
+      color: #fff;
+    }
+
+    #app-container {
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-evenly;
+      padding: 10px 8px;
+      max-width: 340px;
+      margin: 0 auto;
+    }
+
+    #title-banner {
+      font-size: 1.6rem;
+      font-weight: 800;
+      color: #ffffff;
+      text-align: center;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+    }
+
+    #countdown {
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      gap: 2px;
+      width: 100%;
+    }
+
+    .seg-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+    }
+
+    .seg-wrap .seg-label {
+      font-size: 0.65rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #ffffff;
+    }
+
+    #countdown span.seg {
+      font-size: 2.3rem;
+      font-weight: 200;
+      letter-spacing: 0.02em;
+      font-variant-numeric: tabular-nums;
+      cursor: pointer;
+      padding: 2px 4px;
+      border-radius: 8px;
+      transition: color 0.2s, background 0.2s;
+    }
+
+    #countdown span.seg.active {
+      color: #4a90e2;
+      background: rgba(74, 144, 226, 0.15);
+    }
+    .seg-wrap:has(.seg.active) .seg-label { color: #4a90e2; }
+
+    #countdown span.sep {
+      font-size: 1.8rem;
+      color: rgba(255,255,255,0.3);
+      padding: 0 1px 4px 1px;
+    }
+
+    #countdown.finished .seg {
+      color: #ff4757 !important;
+      animation: blink 0.7s ease-in-out infinite;
+    }
+
+    @keyframes blink { 50% { opacity: 0.2; } }
+
+    .numpad {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      width: 210px;
+    }
+
+    .numpad button {
+      height: 46px;
+      border-radius: 12px;
+      font-size: 1.25rem;
+      font-weight: 400;
+      background: rgba(255,255,255,0.08);
+      color: #fff;
+      border: 1px solid rgba(255,255,255,0.12);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .numpad button:active {
+      transform: scale(0.92);
+      background: rgba(255,255,255,0.22);
+    }
+
+    .numpad .btn-del {
+      background: rgba(255,100,100,0.14);
+      border-color: rgba(255,100,100,0.25);
+      font-size: 1.2rem;
+    }
+
+    .numpad .btn-empty {
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.12);
+      cursor: default;
+    }
+
+    .controls {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+    }
+
+    #btn-main {
+      width: 66px;
+      height: 66px;
+      border-radius: 50%;
+      border: none;
+      font-size: 1.7rem;
+      background: linear-gradient(145deg, #4a90e2, #7c4dff);
+      color: #fff;
+      box-shadow: 0 4px 18px rgba(74,144,226,0.45);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.15s, background 0.3s;
+    }
+
+    #btn-main:active { transform: scale(0.92); }
+
+    #btn-main.alarm-active {
+      width: 170px;
+      height: 56px;
+      border-radius: 28px;
+      background: linear-gradient(145deg, #ff4757, #ff6b81);
+      box-shadow: 0 6px 24px rgba(255, 71, 87, 0.55);
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      animation: pulse-alarm 1s infinite;
+    }
+
+    @keyframes pulse-alarm {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+
+    #msg {
+      font-size: 0.75rem;
+      color: rgba(255,255,255,0.4);
+      letter-spacing: 0.05em;
+      min-height: 1.2em;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+<div id="app-container">
+  <div id="title-banner">ARİZAN</div>
+
+  <div id="countdown">
+    <div class="seg-wrap">
+      <span class="seg-label">Saat</span>
+      <span class="seg active" id="seg-h">00</span>
+    </div>
+    <span class="sep">:</span>
+    <div class="seg-wrap">
+      <span class="seg-label">Dəqiqə</span>
+      <span class="seg" id="seg-m">00</span>
+    </div>
+    <span class="sep">:</span>
+    <div class="seg-wrap">
+      <span class="seg-label">Saniyə</span>
+      <span class="seg" id="seg-s">00</span>
+    </div>
+  </div>
+
+  <div class="numpad" id="numpad">
+    <button data-n="1">1</button>
+    <button data-n="2">2</button>
+    <button data-n="3">3</button>
+    <button data-n="4">4</button>
+    <button data-n="5">5</button>
+    <button data-n="6">6</button>
+    <button data-n="7">7</button>
+    <button data-n="8">8</button>
+    <button data-n="9">9</button>
+    <button class="btn-del" id="btn-del">⌫</button>
+    <button data-n="0">0</button>
+    <button class="btn-empty"></button>
+  </div>
+
+  <div class="controls">
+    <button id="btn-main" title="Başlat">▶</button>
+  </div>
+
+  <div id="msg">Mavi hissəni seç, rəqəm daxil et</div>
+</div>
+
+<script>
+  const cdEl    = document.getElementById('countdown');
+  const msgEl   = document.getElementById('msg');
+  const btnMain = document.getElementById('btn-main');
+  const numpad  = document.getElementById('numpad');
+
+  const segs = [
+    { el: document.getElementById('seg-h'), max: 23 },
+    { el: document.getElementById('seg-m'), max: 59 },
+    { el: document.getElementById('seg-s'), max: 59 },
+  ];
+
+  let values    =;
+  let active    = 0;
+  let buffer    = '';
+  let running   = false;
+  let timer     = null;
+  let alarmCtx  = null;
+  let alarmInt  = null;
+  let targetEndTime = 0;
+  let alarmPlaying = false;
+
+  function pad(n) { return String(n).padStart(2, '0'); }
+
+  function renderSegs() {
+    segs.forEach((s, i) => s.el.textContent = pad(values[i]));
+  }
+
+  function selectSeg(i) {
+    segs[active].el.classList.remove('active');
+    active = i;
+    segs[active].el.classList.add('active');
+    buffer = '';
+  }
+
+  segs.forEach((s, i) => {
+    s.el.addEventListener('click', () => {
+      if (running || alarmPlaying) return;
+      selectSeg(i);
+    });
+  });
+
+  numpad.addEventListener('click', e => {
+    if (running || alarmPlaying) return;
+    const btn = e.target.closest('button');
+    if (!btn || btn.classList.contains('btn-empty')) return;
+
+    if (btn.id === 'btn-del') {
+      buffer = buffer.slice(0, -1);
+      values[active] = parseInt(buffer) || 0;
+      renderSegs();
+      return;
+    }
+
+    const digit = btn.dataset.n;
+    if (digit === undefined) return;
+
+    if (buffer.length >= 2) buffer = buffer.slice(1);
+    buffer += digit;
+    
+    let val = parseInt(buffer) || 0;
+    if (val > segs[active].max) val = segs[active].max;
+    values[active] = val;
+    renderSegs();
+  });
+
+  function startTimer() {
+    const totalSec = values[0] * 3600 + values[1] * 60 + values[2];
+    if (totalSec <= 0) return;
+
+    initAudio();
+
+    running = true;
+    targetEndTime = Date.now() + totalSec * 1000;
+    btnMain.textContent = "◼";
+    msgEl.textContent = "Taymer işləyir...";
+
+    timer = setInterval(() => {
+      const timeLeft = Math.max(0, Math.ceil((targetEndTime - Date.now()) / 1000));
+      
+      const h = Math.floor(timeLeft / 3600);
+      const m = Math.floor((timeLeft % 3600) / 60);
+      const s = timeLeft % 60;
+      
+      segs[0].el.textContent = pad(h);
+      segs[1].el.textContent = pad(m);
+      segs[2].el.textContent = pad(s);
+
+      if (timeLeft <= 0) {
+        clearInterval(timer);
+        triggerAlarm();
+      }
+    }, 200);
+  }
+
+  function stopTimer() {
+    clearInterval(timer);
+    running = false;
+    btnMain.textContent = "▶";
+    msgEl.textContent = "Dayandırıldı";
+    renderSegs();
+  }
+
+  function initAudio() {
+    if (alarmCtx) {
+      try { alarmCtx.close(); } catch(e){}
+    }
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    alarmCtx = new AudioContextClass();
+  }
+
+  function triggerAlarm() {
+    alarmPlaying = true;
+    cdEl.classList.add('finished');
+    btnMain.textContent = "SƏSİ KƏS";
+    btnMain.classList.add('alarm-active');
+    msgEl.textContent = "Zaman bitdi!";
+
+    alarmInt = setInterval(() => {
+      if (!alarmCtx || alarmCtx.state === 'suspended') {
+        initAudio();
+      }
+      playBeep();
+    }, 800);
+    playBeep(); 
+  }
+
+  function playBeep() {
+    try {
+      if (!alarmCtx) return;
+      const osc = alarmCtx.createOscillator();
+      const gain = alarmCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, alarmCtx.currentTime);
+      gain.gain.setValueAtTime(0.5, alarmCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, alarmCtx.currentTime + 0.4);
+      osc.connect(gain);
+      gain.connect(alarmCtx.destination);
+      osc.start();
+      osc.stop(alarmCtx.currentTime + 0.4);
+    } catch (e) {
+      console.log("Səs xətası:", e);
+    }
+  }
+
+  function stopAlarm() {
+    clearInterval(alarmInt);
+    alarmPlaying = false;
+    running = false;
+    cdEl.classList.remove('finished');
+    btnMain.classList.remove('alarm-active');
+    btnMain.textContent = "▶";
+    msgEl.textContent = "Mavi hissəni seç, rəqəm daxil et";
+    
+    if (alarmCtx) {
+      try { alarmCtx.close(); } catch(e){}
+      alarmCtx = null;
+    }
+    values =;
+    renderSegs();
+  }
+
+  btnMain.addEventListener('click', () => {
+    if (alarmPlaying) {
+      stopAlarm();
+    } else if (running) {
+      stopTimer();
+    } else {
+      startTimer();
+    }
+  });
+</script>
+
+</body>
+</html>
